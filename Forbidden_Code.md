@@ -1,4 +1,4 @@
-![Pasted image 20240313004351](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/d9383282-ba4a-4074-a3f3-025f2db62bf4)![Pasted image 20240313004232](https://github.com/Ezhidze25/Forbidden_Code_HW/assets/57564074/8e6ca0f3-a17a-441f-91a9-a34e3527863c)# Forbidden_Code_HW
+# Forbidden_Code_HW
 
 При входе на сайт видим форму для входа/регистрации
 
